@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc 
+	http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd
+		http://www.springframework.org/schema/aop
+	http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd 
+		http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+   	<mvc:resources mapping="/js/**" location="/js/" />
+	<mvc:resources mapping="/css/**" location="/css/" />
+    <context:component-scan
+		base-package="p.minn.common.aop.webarg,p.minn.security.cas.springsecurity.jwt,p.minn.filter,p.minn.dubbo.web">
+		<context:include-filter type="annotation"
+			expression="org.springframework.stereotype.Controller" />
+		<context:include-filter type="annotation"
+			expression="org.springframework.web.bind.annotation.ControllerAdvice" />
+	</context:component-scan>
+
+	<aop:config>
+		<aop:pointcut expression="(execution(* p.minn.*.web.*Controller.*(..)) or execution(* p.minn.security.swf.*Controller.*(..)) )and !execution(* p.minn.security.web.*Controller.*(..))"
+			id="webReturn" />
+		<aop:advisor advice-ref="webReturnProxy" pointcut-ref="webReturn" />
+	</aop:config>
+
+	<bean id="messageSource"
+		class="org.springframework.context.support.ResourceBundleMessageSource">
+		<property name="basename">
+			<value>messages.messages</value>
+		</property>
+	</bean>
+
+	<bean id="localeResolver"
+		class="org.springframework.web.servlet.i18n.SessionLocaleResolver">
+		<property name="defaultLocale" value="zh" />
+	</bean>
+	
+	<mvc:annotation-driven>
+	    <mvc:argument-resolvers>
+			<bean class="p.minn.common.aop.webarg.WebArgumentResolver" />
+		</mvc:argument-resolvers>
+		<mvc:message-converters register-defaults="true">
+			<!-- 将StringHttpMessageConverter的默认编码设为UTF-8 -->
+			<bean class="org.springframework.http.converter.StringHttpMessageConverter">
+		    	<constructor-arg value="UTF-8" />
+			</bean>
+			<!-- 将Jackson2HttpMessageConverter的默认格式化输出设为true -->
+			<bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter">
+                <property name="prettyPrint" value="true"/>
+                <property name="objectMapper">
+                    <bean class="com.fasterxml.jackson.databind.ObjectMapper">
+                    </bean>
+                </property>
+            </bean>			
+  		</mvc:message-converters>
+	</mvc:annotation-driven>
+  <mvc:interceptors>
+    <mvc:interceptor>
+       <mvc:mapping path="/**"/>
+       <bean class="p.minn.filter.MyAuthInterceptor"></bean>
+    </mvc:interceptor>
+  </mvc:interceptors>
+   <dubbo:application name="consumer"/>
+   <dubbo:registry protocol="zookeeper" address="127.0.0.1:2181"/>
+   <dubbo:reference id="demoService" check="false" interface="p.minn.dubbo.api.IDemoService"/>
+</beans>
